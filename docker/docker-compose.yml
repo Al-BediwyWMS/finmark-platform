@@ -1,0 +1,63 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=finmark
+    networks:
+      - finmark-network
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - finmark-network
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    depends_on:
+      - auth-service
+    networks:
+      - finmark-network
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+    environment:
+      - PORT=4001
+      - MONGO_URI=mongodb://mongo:27017/finmark
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - finmark-network
+
+  client:
+    build:
+      context: ./client
+    ports:
+      - "8080:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - finmark-network
+
+networks:
+  finmark-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
